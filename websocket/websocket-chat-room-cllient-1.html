@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Websocket Chat Room Client 1</title>
+</head>
+<body>
+
+    <h1>Websocket Chat Room 1</h1>
+    <input type="text" id="txt">
+    <button id="btn">Send</button>
+    <div id="receive"></div>
+
+    <script>
+
+        var websocket = new WebSocket("ws://localhost:3001/");
+
+        function showMessage(str){
+            var oDiv = document.createElement('div');
+            oDiv.innerHTML = str;
+            document.body.appendChild(oDiv);
+        }
+        
+        websocket.onopen = function(){
+            console.log("websocket open");
+            document.getElementById("btn").onclick = function(){
+                var txt = document.getElementById("txt").value;
+                if(txt){
+                    websocket.send(txt);
+                }
+            }
+        }
+        websocket.onclose = function(){
+            console.log("websocket close");
+        }
+        websocket.onmessage = function(e){
+            console.log(e.data);
+            showMessage(e.data);
+        }
+
+    </script>
+</body>
+</html>
