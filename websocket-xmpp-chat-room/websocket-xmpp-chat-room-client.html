@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Websocket Chat Room With XMPP</title>
+    <style>
+        body{
+            font-family: sans-serif;
+        }
+        #output{
+            border: 2px solid black;
+            border-radius: 8px;
+            width: 500px;
+        }
+        #output div{
+            padding: 10px;
+        }
+        #ouput div:nth-child(even){
+            background-color: #ccc;
+        }
+        .panel{
+            display: block;
+            padding: 20px;
+            border:1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="pannel">
+        <input type="text" class="username" placeholder="username">
+        <input type="password" class="password" placeholder="password">
+        <button id="cBtn">Connect</button>
+    </div>
+
+    <div id="pArea" class="panel"></div>
+    <div id="cArea" class="panel"></div>
+    <div id="output"></div>
+
+    
+    <script scr="./strophe.js"></script>
+    <script>
+
+        var url = "ws://localhost:3006";
+        var connection = null;
+        var cBtn = document.getElementById("cBtn");
+        var ouput = document.getElementById("ouput");
+        var pArea = document.getElementById("pArea");
+        
+        function conHandler(cond){
+            if(cond == Strophe.Status.CONNECTED){
+                log("connected");
+                connection.send($pres());
+            }
+        }
+        cBtn.onclick =function(){
+            var username = document.getElementById("username").value;
+            var password = document.getElementById("password").value;
+            connection = new Strophe.Connection({ proto: new Strophe.Websocket(url)});
+            connection.connect(username, passwod, conHandler);
+
+            // 将addHandler与连接关联
+            connection.addHandler(msgHandler, null, "message", "chat");
+
+            // 注册在线状态处理程序
+            connection.addHandler(preHandler, null, "presence", null);
+            connection.addHandler(pingHandler, "urn:xmpp:ping", "iq", "message", "get");            
+        }
+        function log(msg){
+            var line = document.createElement('div');
+            line.textContent = msg;
+            ouput.appendChild(line);
+        }
+        
+        // 在线信息更新UI
+        var select = document.createElement('select');
+        var availabilities = ["away", "chat", "dnd", "xa"];
+        var labels =["Away", "Available", "Busy", "Gone"];
+        for(var i = 0; i< availabilities.length; i++){
+            var option = document.createElement("option");
+            option.value = availabilities[i];
+            option.text = labels[i];
+            select.add(option);
+        }
+        pArea.appendChild(select);
+
+        // 状态文本所用的输入元素
+        var statInput = document.createElement("input");
+        statInput.setAttribute("placeholder", "status");
+        pArea.appendChild(statInput);
+
+        // 用于发送更新的按钮事件
+        var statBtn = document.createElement('button');
+        statBtn.textContent = "Update Status";
+        statBtn.onclick = function(){
+            var pres = $pres();
+            c("show").t(sel.value).up();
+            c("status").t(statInput.value);
+        }
+        pArea.appendChild(statBtn);
+
+        // 处理在线更新状态
+        function preHandler(pre){
+            var from = pre.getAttribute("from");
+            var show = "";
+            var status = "";
+            Strophe.forEachChild(pre, "show", function(elem){
+                show = elem.textContent;
+            });
+            Strophe.forEachChild(pre, "show", function(elem){
+                status = elem.textContent;
+            });
+           if(show || status){
+               log("[pre] " + "from" + " : " + status + " " + show);
+           }
+           return true;
+        }
+
+        // 用Strophe.js构建一条消息
+        var cArea = document.getElementById('cArea');
+        var toJid = document.createElement("input");
+        toJid.setAttribute("placeholder", "user@server");
+        cArea.appendChild(toJid);
+
+        var cBody = document.createElement("input");
+        cBody.setAttribute("placeholder", "chat body");
+        cArea.appendChild(cBody);
+
+        var sBtn = document.createElement("button");
+        sBtn.textContent = "Send";
+        sBtn.onclick = function(){
+            var msg = $msg({to: toJid.value, type:"chat"}).c("body").t(cBody.value);
+            connection.send(msg);
+        }
+        cArea.appendChild(sBtn);
+
+        // 监听入站“聊天”消息节
+        function msgHandler(msg){
+            var from = msg.getAttribute("from");
+            var body = "";
+             Strophe.forEachChild(msg, "body", function(elem){
+                body = elem.textContent;
+            });
+            if(body){
+                log(from + " : " + body);
+            }
+            return true;
+        }
+
+        // 注册一个用于iq节的处理程序
+        function pingHandler(ping){
+            var pingId = ping.getAttribute("id");
+            var from = ping.getAttribute("from");
+            var to = ping.getAttribute("to");
+
+            var pong = $iq({type:"result", "to":from, id:pingId, "from": to});
+            connection.send(pong);
+
+            return true;
+        }
+
+
+
+
+
+    </script>
+    
+</body>
+</html>
